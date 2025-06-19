@@ -1,0 +1,62 @@
+import requests
+import time
+import telegram
+from dotenv import load_dotenv
+from os import environ
+
+import telegram.ext
+
+def send_request(headers,params=None):
+    if params:
+        return requests.get(url='https://dvmn.org/api/long_polling/',headers=headers, params=params).json()
+    return requests.get(url='https://dvmn.org/api/long_polling/',headers=headers).json()
+
+def create_message(name, url, is_negative=False):
+    if is_negative:
+        return f"У вас проверили работу '{name}' \n\nК сожалению, в работе нашлись ошибки\n\n[{name}]({url})\."
+    return f"У вас проверили работу '{name}'\n\nтПреподавателю все понравилось можете преступать к следующему уроку!\n\n[{name}]({url})\."
+
+
+def work_checker(bot:telegram.Bot, chat_id):
+    devman_token = environ['DEVMAN_TOKEN']
+    headers = {'Authorization':devman_token}
+    params = {}
+    while True:
+        try:
+            response = requests.get(url='https://dvmn.org/api/long_polling/',headers=headers, params=params).json()
+            if response['status'] == 'found':
+                last_attempt = response['new_attempts'][-1] 
+                lesson_title = last_attempt['lesson_title']
+                is_negative = last_attempt['is_negative']
+                lesson_url = last_attempt['lesson_url']
+                message_text = create_message(lesson_title, lesson_url, is_negative)
+                bot.send_message(chat_id=chat_id, text='{}'.format(message_text), parse_mode=telegram.ParseMode.MARKDOWN_V2)
+                params = {'timestamp':response['last_attempt_timestamp']}
+            else:
+                params = {'timestamp':response['timestamp_to_request']}
+        except requests.exceptions.ReadTimeout as e:
+            print('Error {}'.format(e))
+        except requests.exceptions.ConnectionError as e:
+            print('Error {}'.format(e))
+            time.sleep(5)
+
+
+def start_handler(update, context):
+    chat_id = update.effective_chat.id
+    context.bot.send_message(chat_id=chat_id, text="В данный чат с id {} будцт приходить уведомления о проверке работ".format(chat_id))
+    work_checker(context.bot, chat_id)
+    
+
+def start_bot():
+    load_dotenv()
+    tg_token = environ['TG_TOKEN']
+    updater = telegram.ext.Updater(token=tg_token, use_context=True)
+    dispatcher = updater.dispatcher
+    start_h = telegram.ext.CommandHandler("start",start_handler)
+    dispatcher.add_handler(start_h)
+    updater.start_polling()
+
+
+
+if __name__ == '__main__':
+    start_bot()
