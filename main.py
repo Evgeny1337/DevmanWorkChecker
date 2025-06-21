@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from os import environ
 import telegram.ext
 
+REQUEST_TIMEOUT = 5
 
 def create_message(name, url, is_negative=False):
     if is_negative:
@@ -17,7 +18,12 @@ def check_reviews(bot:telegram.Bot, chat_id, devman_token):
     params = {}
     while True:
         try:
-            response = requests.get(url='https://dvmn.org/api/long_polling/',headers=headers, params=params)
+            response = requests.get(
+                url='https://dvmn.org/api/long_polling/',
+                headers=headers,
+                params=params,
+                timeout=REQUEST_TIMEOUT
+            )
             review_info = response.json()
             if review_info['status'] == 'found':
                 last_attempt = review_info['new_attempts'][-1] 
@@ -30,7 +36,7 @@ def check_reviews(bot:telegram.Bot, chat_id, devman_token):
             else:
                 params = {'timestamp':review_info['timestamp_to_request']}
         except requests.exceptions.ReadTimeout as e:
-            print('Error {}'.format(e))
+            pass
         except requests.exceptions.ConnectionError as e:
             print('Error {}'.format(e))
             time.sleep(5)
