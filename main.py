@@ -12,7 +12,7 @@ def create_message(name, url, is_negative=False):
     return f"У вас проверили работу '{name}'\n\nтПреподавателю все понравилось можете преступать к следующему уроку!\n\n[{name}]({url})\."
 
 
-def work_checker(bot:telegram.Bot, chat_id):
+def check_reviews(bot:telegram.Bot, chat_id):
     devman_token = environ['DEVMAN_TOKEN']
     headers = {'Authorization':devman_token}
     params = {}
@@ -40,7 +40,7 @@ def work_checker(bot:telegram.Bot, chat_id):
 def start_handler(update, context):
     chat_id = update.effective_chat.id
     context.bot.send_message(chat_id=chat_id, text="В данный чат с id {} будцт приходить уведомления о проверке работ".format(chat_id))
-    work_checker(context.bot, chat_id)
+    check_reviews(context.bot, chat_id)
     
 
 def start_bot():
