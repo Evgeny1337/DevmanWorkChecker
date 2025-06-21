@@ -3,13 +3,8 @@ import time
 import telegram
 from dotenv import load_dotenv
 from os import environ
-
 import telegram.ext
 
-def send_request(headers,params=None):
-    if params:
-        return requests.get(url='https://dvmn.org/api/long_polling/',headers=headers, params=params).json()
-    return requests.get(url='https://dvmn.org/api/long_polling/',headers=headers).json()
 
 def create_message(name, url, is_negative=False):
     if is_negative:
@@ -23,17 +18,18 @@ def work_checker(bot:telegram.Bot, chat_id):
     params = {}
     while True:
         try:
-            response = requests.get(url='https://dvmn.org/api/long_polling/',headers=headers, params=params).json()
-            if response['status'] == 'found':
-                last_attempt = response['new_attempts'][-1] 
+            response = requests.get(url='https://dvmn.org/api/long_polling/',headers=headers, params=params)
+            review_info = response.json()
+            if review_info['status'] == 'found':
+                last_attempt = review_info['new_attempts'][-1] 
                 lesson_title = last_attempt['lesson_title']
                 is_negative = last_attempt['is_negative']
                 lesson_url = last_attempt['lesson_url']
                 message_text = create_message(lesson_title, lesson_url, is_negative)
                 bot.send_message(chat_id=chat_id, text='{}'.format(message_text), parse_mode=telegram.ParseMode.MARKDOWN_V2)
-                params = {'timestamp':response['last_attempt_timestamp']}
+                params = {'timestamp':review_info['last_attempt_timestamp']}
             else:
-                params = {'timestamp':response['timestamp_to_request']}
+                params = {'timestamp':review_info['timestamp_to_request']}
         except requests.exceptions.ReadTimeout as e:
             print('Error {}'.format(e))
         except requests.exceptions.ConnectionError as e:
